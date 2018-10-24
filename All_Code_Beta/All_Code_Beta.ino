@@ -84,47 +84,12 @@ int M1_Freq = 0; // Частота оборотов двигателя
 double M1_Period = 0; // Переиод оборота вала двигателя
 
 //===================================  Данные для Сельсин датчика
-
 double FullAngle = 0, Save_previous_angle = 0; //переменные для сельсин датчика угол, предыдущее значение угла
 int divider = 1;  //Делитель для скалирования графика
 uint8_t u8Count = 0, u8data = 0;
 uint16_t u16multiTurn = 0, u16singleTurn = 0, u16Save_previousTurn = 0;
 uint32_t u32result = 0;
 double dAngle = 0, dRotations = 0; // угол и кол-во поворотов сельсин датчика (повороты от 0 до 4095)
-
-//================================================================================================================================================== Переменыне для фаз внутри case
-//=================================== Простое упражнение
-
-double posit[4]; //Положение
-int phase_time[4], phase[3], All_time = 0, ; //Время на прохождение фазы, общее время, фаза
-
-//=================================== Просто упражнение с паузами
-
-double posit[4]; //Положение
-int phase_time[4], phase[4], All_time = 0, ; //Время на прохождение фазы, общее время, фаза+усилие(пауза = усилие 0)
-
-//=================================== Упражнение с полуторами в фазе сокращения
-
-double posit[8]; //Положение
-int phase_time[8], phase[3], All_time = 0, ; //Время на прохождение фазы, общее время, фаза
-
-//=================================== Упражнение с 4-мя остановками
-
-double posit[12]; //Положение
-int phase_time[12], phase[3], All_time = 0, ; //Время на прохождение фазы, общее время, фаза
-
-//=================================== Комбинированное упражнение
-
-double posit[12]; //Положение
-int phase_time[12], phase[4], All_time = 0, ; //Время на прохождение фазы, общее время, фаза
-
-//================================================================================================================================================== Переменные внутри конкретной фазы
-//=================================== Таблица для сравнения простого упражнения
-
-double phase_posit[22]; //Положение в фазе
-int phase_coef[22], phase_time[22],All_time = 0, potenc = 100, potenc_coef[?], strength_wait; //Коэффициенты фаз, время на прохождение фазы, общее время, потенциал мыщцы(постоянно на что-то домножается), 
-                                                                                    //коэфы на которые домножается потенциал мыщцы, ожидаие показание тензо датчика(potenc*potenc_coef[i]*phase_coef[n]/10000*70)
-
 //==================================================================================================================================================
 //========================================================================= SETUP
 void setup()
@@ -186,7 +151,7 @@ void setup()
 //==================================================================================================================================================
 //========================================================================= Функция отправки данных на дисплей Nextion
 
-void Nex_Data(int ex, bool iter, bool prog ,int prog_del, bool t, int t_del, bool dir, bool freq,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+void NexData(int ex, bool iter, bool prog ,int prog_del, bool t, int t_del, bool dir, bool freq,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
              bool sels, bool t_100, bool t_500, bool t_1000 )  //  Сельсин, тензо 100, тензо 500, тензо 100
 {                                                                         
   if (iter == true)
@@ -368,18 +333,14 @@ void loop()
     {
       int Selsin_data = Selsin(); //Данные сельсина
       int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
-      int state = 91;
-     
+      int state = 0;
+
+      if (FullAngle >= 5000) state = 92; // Остановка упражнения и смотка тросса
+        else state = 91; // Подача тросса
+        
       switch (state)
       {
         case 91:
-        {
-          if (FullAngle >= 5000) state = 93; // Остановка упражнения и смотка тросса
-            else state = 92; // Подача тросса
-          break;
-        }
-        
-        case 92:
         {
                     
           if (tnz_value_1 > 5) //Проверка на усилие
@@ -400,47 +361,16 @@ void loop()
           break;
         }
           
-        case 93:
+        case 92:
         { 
           Ex_numbers++;
           NEXTION_PORT.print("EX1_Num_val.val="); // Отправка кол-ва упражнений
           DataVal(Ex_numbers);
-
-          while (Freq_current != 0) //остановка упражнения
-          {
-            Freq_current -= 100;
-            if (Freq_current < 0) Freq_current = 0;
-            Motor_Period = (double)(1000000 / Freq_current);
-            Timer3.start(Motor_Period);
-            Nex_Data(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-                true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
-          }
-
-          delay (2000);
-          DIR_value = 1;
-          digitalWrite(DIR_pin, 1);
-          NEXTION_PORT.print("EX1_Text_6.val=");
-          DataVal(DIR_value);
-          Selsin();
-
-          while (FullAngle > 0)
-          {
-            Selsin();
-            Freq_current = 10000;
-            Motor_Period = (double)(1000000 / Freq_current);
-            Timer3.start(Motor_Period);
-            Nex_Data(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-               true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
-          }
-           
-          DIR_value = 0;
-          digitalWrite(DIR_pin, 0);
-          NEXTION_PORT.print("EX1_Text_6.val=");
-          DataVal(DIR_value);  
+          StopAndWind(1, 100, 10000); // Номер упр, частота уменьшения, частота смотки    
           break;        
         }
       }
-      Nex_Data(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+      NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100         
       break;
     }
@@ -508,55 +438,13 @@ void loop()
               Strength[i] = tnz_value_1;
               i++;
             }
-            Nex_Data(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+            NexData(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
              true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
           }
-         
-//========================================== Остановка упражнения и смотка тросса
 
-          while (Freq_current != 0) //остановка упражнения
-          {
-            if (page == 0) break;
-            
-            Freq_current -= 100;
-            if (Freq_current < 0) Freq_current = 0;
-            Motor_Period = (double)(1000000 / Freq_current);
-            Timer3.start(Motor_Period);
-            Nex_Data(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-                 true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
-          }
-
-          delay (2000);
-          DIR_value = 1;
-          digitalWrite(DIR_pin, 1);
-          NEXTION_PORT.print("EX2_Text_6.val=");
-          DataVal(DIR_value);
-          Selsin();
-
-          while (FullAngle > 0)
-          {
-            if (page == 0) break;
-            Selsin();
-            
-            Freq_current = 10000;
-            Motor_Period = (double)(1000000 / Freq_current);
-            Timer3.start(Motor_Period);
-            Nex_Data(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-                 true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
-          }
+          StopAndWind(2, 100, 10000); // Номер упр, частота уменьшения, частота смотки         
           
-          Freq_current = 0;
-          Motor_Period = (double)(1000000 / Freq_current);
-          Timer3.start(Motor_Period);
-
-//========================================== Конец остановки упражнения и смотка тросса
-
-          DIR_value = 0;
-          digitalWrite(DIR_pin, 0);
-          NEXTION_PORT.print("EX2_Text_6.val=");
-          DataVal(DIR_value);
-
-          for (int i = 0; i < 100; i++)
+          for (int i = 0; i < 100; i++) // Вывод полученных массивов в порт
           {
             Serial.println(Angle[i]);
           }
@@ -600,7 +488,7 @@ void loop()
               DataVal(0);
               i++;
             }
-            Nex_Data(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+            NexData(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100                   
           }
       
@@ -611,45 +499,12 @@ void loop()
             Ex_numbers++;
             NEXTION_PORT.print("EX2_Num_val.val="); // Отправка кол-ва упражнений
             DataVal(Ex_numbers);
-
-            while (Freq_current != 0) //остановка упражнения
-            {
-              Freq_current -= 100;
-              if (Freq_current < 0) Freq_current = 0;
-              Motor_Period = (double)(1000000 / Freq_current);
-              Timer3.start(Motor_Period);
-              Nex_Data(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-                 true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100             
-            }
-
-            delay (2000);
-            DIR_value = 1;
-            digitalWrite(DIR_pin, 1);
-            NEXTION_PORT.print("EX2_Text_6.val=");
-            DataVal(DIR_value);
-            Selsin();
-
-            while (FullAngle > 0)
-            {
-              if (page == 0) break;
-              
-              Selsin();
-              Freq_current = 10000;
-              Motor_Period = (double)(1000000 / Freq_current);
-              Timer3.start(Motor_Period);
-              Nex_Data(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
-                 true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
-            }
-
-            DIR_value = 0;
-            digitalWrite(DIR_pin, 0);
-            NEXTION_PORT.print("EX2_Text_6.val=");
-            DataVal(DIR_value);
+            StopAndWind(2, 100, 10000); // Номер упр, частота уменьшения, частота смотки
           }
         }
 //========================================== Конец выполнения упражнения
 
-        Nex_Data(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+        NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
         break;
       }
@@ -974,7 +829,7 @@ void  DataVal (int data)
   NEXTION_PORT.print(Command);
 }
 
-//========================================================================= Отправка данных двигателя
+//========================================================================= Прерывание на отправку данных двигателя
 
 void stp1_toggle()
 {
@@ -982,6 +837,50 @@ void stp1_toggle()
   digitalWrite(STP_pin, STP_value);
 }
 
+//========================================================================= Остановка и смотка тросса
+
+void StopAndWind (int ex, int minus, int wind)
+{
+  while (Freq_current != 0) //Остановка
+  {
+    Freq_current -= minus; // Уменьшение частоты
+    if (Freq_current < 0) Freq_current = 0;
+    Motor_Period = (double)(1000000 / Freq_current);
+    Timer3.start(Motor_Period);
+    NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+      true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
+  }
+    
+  delay (2000);
+  DIR_value = 1;
+  digitalWrite(DIR_pin, 1);
+  NEXTION_PORT.print("EX"); // Отправка направления
+  NEXTION_PORT.print(ex);
+  NEXTION_PORT.print("_Text_6.val=");
+  DataVal(DIR_value);
+  Selsin();
+
+  while (FullAngle > 0) // Смотка
+  {
+    Selsin();
+    Freq_current = wind;  // Частота смотки 
+    Motor_Period = (double)(1000000 / Freq_current);
+    Timer3.start(Motor_Period);
+    NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+      true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
+  }
+  
+  Freq_current = 0;
+  Motor_Period = (double)(1000000 / Freq_current);
+  Timer3.start(Motor_Period);
+  DIR_value = 0;
+  digitalWrite(DIR_pin, 0);
+  NEXTION_PORT.print("EX"); // Отправка направления   
+  NEXTION_PORT.print(ex);
+  NEXTION_PORT.print("_Text_6.val=");
+  DataVal(DIR_value);
+}
+  
 //========================================================================= Прерывание на повышение оборотов
 
 void timer_interrupt_up()
