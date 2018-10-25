@@ -43,6 +43,7 @@ NextionPage pgGyro(nex, 7, 0, "Gyro"); // Гироскоп
 NextionPage pgEX1(nex, 9, 0, "Exercise 1"); //Упражнение 1
 NextionPage pgEX2(nex, 10, 0, "Exercise 2"); //Упражнение 2
 NextionPage pgTP (nex, 11, 0, "Time Page"); //Задание времени на упражнение 2
+NextionPage pgC (nex, 12, 0, "Coiling"); //Смотка, намотка
 
 //==================================================== Кнопки
 
@@ -57,7 +58,9 @@ NextionButton EX1_Start(nex, 9, 2, "EX1_Start"); //Старт 1 упражнен
 NextionButton EX1_Button_Bac(nex, 9, 1, "EX_Button_Bac"); //Выход из упражнения 1
 NextionButton EX2_Start(nex, 10, 2, "EX2_Start"); //Старт 2 упражнения
 NextionButton EX2_Button_Bac(nex, 10, 1, "EX2_Button_Bac"); //Выход из упражнения 2
-NextionButton TP_Button_Ok (nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
+NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
+NextionButton C_Button_2(nex, 12, 5, "C_Button_2"); // Смотка
+NextionButton C_Button_3(nex, 12, 6, "C_Button_3"); // Намотка
 
 //==================================================== Слайдеры
 
@@ -136,6 +139,8 @@ void setup()
   Serial.println(EX2_Start.attachCallback(&callback_EX2_Start));
   Serial.println(EX2_Button_Bac.attachCallback(&callback_EX2_Button_Bac));
   Serial.println(TP_Button_Ok.attachCallback(&callback_TP_Button_Ok));
+  Serial.println(C_Button_2.attachCallback(&callback_C_Button_2));
+  Serial.println(C_Button_3.attachCallback(&callback_C_Button_3));
 
   //====================================================
 
@@ -508,6 +513,7 @@ void loop()
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
         break;
       }
+
   }
 }
 
@@ -589,6 +595,51 @@ void callback_MC1_Reverse(NextionEventType type, INextionTouchable *widget)
   }
 }
 
+//========================================================================= Отклик на нажатие кнопки "Смотка"
+
+void callback_C_Button_2(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+
+    if (Motor_State == 0)
+    {
+      DIR_value = 0;
+      digitalWrite(DIR_pin, 0);
+      Motor_State = 1;
+      Timer3.start(1000);
+    }
+
+    else
+    {
+      Motor_State = 0;
+      Timer3.stop();
+    }
+  }
+}
+
+//========================================================================= Отклик на нажатие кнопки "Подача"
+
+void callback_C_Button_3(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+
+    if (Motor_State == 0)
+    {
+      DIR_value = 1;
+      digitalWrite(DIR_pin, 1);
+      Motor_State = 1;
+      Timer3.start(1000);
+    }
+
+    else
+    {
+      Motor_State = 0;
+      Timer3.stop();
+    }
+  }
+}
 //========================================================================= Кнопка Старта Тензо 100
 
 void callback_T100_Button_2(NextionEventType type, INextionTouchable *widget)
