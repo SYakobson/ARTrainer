@@ -371,7 +371,7 @@ void loop()
           Ex_numbers++;
           NEXTION_PORT.print("EX1_Num_val.val="); // Отправка кол-ва упражнений
           DataVal(Ex_numbers);
-          StopAndWind(1, 100, 10000); // Номер упр, частота уменьшения, частота смотки    
+          StopAndWind(1, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй   
           break;        
         }
       }
@@ -383,44 +383,35 @@ void loop()
 //========================================================================= Упражнение 2
 
     case 10:
-      {
-        int n = 100; // Количество отрезков измерений
-        int dt_time = Pre_time / n; // Отрезок времени между измерениями
-        int Selsin_data = Selsin(); //Данные сельсина
-        int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
-        double Angle[100], Strength[100]; //Значения угла и силы
+    {
+      int n = 100; // Количество отрезков измерений
+      int dt_time = Pre_time / n; // Отрезок времени между измерениями
+      int Selsin_data = Selsin(); //Данные сельсина
+      int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
+      double Angle[100], Strength[100]; //Значения угла и силы
+      int state = 0;
+
+      if (Ex_numbers == 0) state = 101;// Получения значений для упражнения
+        else state = 102;
 
 //========================================== Получение значений
 
-        if (Ex_numbers == 0) // Получения значений для упражнения
+      switch(state)
+      {
+        case 101:
         {
           NEXTION_PORT.print("EX2_Time_val.val=");
           DataVal(Pre_time / 100);
           int i = 0;
           if (page == 0) break;
           
-          while ((Pre_time > Ex_time) && (FullAngle < 5000)) // Привод к одним единиам измрения
+          while ((Pre_time > Ex_time) && (FullAngle < 5000)) //Снятие данных
           {
             if (page == 0) break;
             
             tnz_value_1 = Tenzo(1);
             Selsin_data = Selsin();
-
-            /*Serial.println("Flag2");
-            Serial.print("Angle  ");
-            Serial.println(Angle[i]);
-            Serial.print("Strength  ");
-            Serial.println(Strength[i]);
-            Serial.print("Ex_time  ");
-            Serial.println(Ex_time);
-            Serial.print("Pre_time  ");
-            Serial.println(Pre_time);
-            Serial.print("dt_time  ");
-            Serial.println(dt_time);
-            Serial.print("i  ");
-            Serial.println(i);
-            Serial.println();*/
-
+            
             if (tnz_value_1 > 5) //Проверка на усилие
             {
               Freq_current = tnz_value_1 * 200;
@@ -437,7 +428,7 @@ void loop()
               DataVal(0);
             }
 
-            if ((Ex_time / (dt_time)) == (i + 1)) // Привод к одним единицам измерения
+            if ((Ex_time / (dt_time)) == (i + 1)) // Занесение значений
             {
               Angle[i] = FullAngle;
               Strength[i] = tnz_value_1;
@@ -447,7 +438,7 @@ void loop()
              true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
           }
 
-          StopAndWind(2, 100, 10000); // Номер упр, частота уменьшения, частота смотки         
+          StopAndWind(2, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй     
           
           for (int i = 0; i < 100; i++) // Вывод полученных массивов в порт
           {
@@ -465,7 +456,7 @@ void loop()
 //========================================== Конец получения значений        
 //========================================== Начало выполнения упражнения, после получения значений
        
-        while (Ex_numbers > 0)
+        case 102:
         {
           int i = 0;
           if (page == 0) break;
@@ -497,14 +488,13 @@ void loop()
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100                   
           }
       
-         if (i >= 100) //Остановка упражнения и смотка тросса
-         {
-            if (page == 0) break;
-            
+          if (i >= 100) //Остановка упражнения и смотка тросса
+          {
+            if (page == 0) break; 
             Ex_numbers++;
             NEXTION_PORT.print("EX2_Num_val.val="); // Отправка кол-ва упражнений
             DataVal(Ex_numbers);
-            StopAndWind(2, 100, 10000); // Номер упр, частота уменьшения, частота смотки
+            StopAndWind(2, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй
           }
         }
 //========================================== Конец выполнения упражнения
@@ -890,7 +880,7 @@ void stp1_toggle()
 
 //========================================================================= Остановка и смотка тросса
 
-void StopAndWind (int ex, int minus, int wind)
+void StopAndWind (int ex, int minus, int wind, int del_1, int del_2)
 {
   while (Freq_current != 0) //Остановка
   {
@@ -898,7 +888,7 @@ void StopAndWind (int ex, int minus, int wind)
     if (Freq_current < 0) Freq_current = 0;
     Motor_Period = (double)(1000000 / Freq_current);
     Timer3.start(Motor_Period);
-    NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+    NexData(ex, true, true, del_1, true, del_2, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
       true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
   }
     
@@ -917,7 +907,7 @@ void StopAndWind (int ex, int minus, int wind)
     Freq_current = wind;  // Частота смотки 
     Motor_Period = (double)(1000000 / Freq_current);
     Timer3.start(Motor_Period);
-    NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+    NexData(ex, true, true, del_1, true, del_2, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
       true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
   }
   
