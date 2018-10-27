@@ -343,7 +343,7 @@ void loop()
       DIR_value = 0;
       digitalWrite(DIR_pin, 0);
       
-      if (FullAngle >= 5000) state = 92; // Остановка упражнения и смотка тросса
+      if (FullAngle >= 1000) state = 92; // Остановка упражнения и смотка тросса
         else state = 91; // Подача тросса
         
       switch (state)
@@ -353,7 +353,7 @@ void loop()
                     
           if (tnz_value_1 > 5) //Проверка на усилие
           {
-            Freq_current = tnz_value_1 * 200;
+            Freq_current = tnz_value_1 * 30;
             Motor_Period = (double)(1000000 / Freq_current);
             Timer3.start(Motor_Period);
             NEXTION_PORT.print("EX1_Text_2.val="); // Отправка данных двигателя упражнение 1
@@ -375,7 +375,7 @@ void loop()
           Ex_numbers++;
           NEXTION_PORT.print("EX1_Num_val.val="); // Отправка кол-ва упражнений
           DataVal(Ex_numbers);
-          StopAndWind(1, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй   
+          StopAndWind(1, 30, 500, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй   
           break;        
         }
       }
@@ -619,7 +619,7 @@ void callback_C_Button_2(NextionEventType type, INextionTouchable *widget)
       DIR_value = 0;
       digitalWrite(DIR_pin, 0);
       Motor_State = 1;
-      Timer3.start(1000);
+      Timer3.start(500);
     }
 
     else
@@ -642,7 +642,7 @@ void callback_C_Button_3(NextionEventType type, INextionTouchable *widget)
       DIR_value = 1;
       digitalWrite(DIR_pin, 1);
       Motor_State = 1;
-      Timer3.start(1000);
+      Timer3.start(500);
     }
 
     else
