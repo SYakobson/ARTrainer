@@ -18,6 +18,8 @@
 #define NEXTION_PORT Serial1 // Порт передачи Nextion
 #define STP_pin 2 // Пин для передачи шага двигателя
 #define DIR_pin 4 // Пин для направления двигателя
+#define rope_in 1 //Смотка тросса // для установки - 0, напрямую - 1
+#define rope_out 0 //Подача тросса //для установки - 1, напрямую - 0
 
 #define tnz100_pin  A0 // Пины тензо датчиков
 #define tnz500_pin  A1
@@ -61,6 +63,7 @@ NextionButton EX2_Button_Bac(nex, 10, 1, "EX2_Button_Bac"); //Выход из у
 NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
 NextionButton C_Button_2(nex, 12, 5, "C_Button_2"); // Смотка
 NextionButton C_Button_3(nex, 12, 6, "C_Button_3"); // Намотка
+NextionButton E_Button_1(nex, 8, 1, "E_Button_1"); //Упражнение 1
 
 //==================================================== Слайдеры
 
@@ -73,7 +76,7 @@ int page = 0; // Номер страницы
 int Ex_time = 0; // Таймер
 int Ex_numbers = 0; // Кол-во повторений
 int Pre_time = 0; // Время на выполнение упражнения
-int numb = 0, state = 0; //Переменные для счётчиков/состояний
+int flag = 0, state = 0, numb = 0; //Переменные для счётчиков/состояний
 
 //=================================== Данные для двигателя
 
@@ -142,6 +145,7 @@ void setup()
   Serial.println(TP_Button_Ok.attachCallback(&callback_TP_Button_Ok));
   Serial.println(C_Button_2.attachCallback(&callback_C_Button_2));
   Serial.println(C_Button_3.attachCallback(&callback_C_Button_3));
+  Serial.println(E_Button_1.attachCallback(&callback_E_Button_1));
 
   //====================================================
 
@@ -173,7 +177,7 @@ void NexData(int ex, bool iter, bool prog ,int prog_del, bool t, int t_del, bool
     NEXTION_PORT.print("EX"); // Отправка выполнения упражнения
     NEXTION_PORT.print(ex);
     NEXTION_PORT.print("_Bar_1.val=");
-    DataVal(FullAngle / prog_del); //49
+    DataVal(FullAngle / prog_del);
   }
 
   if (t == true)
@@ -181,7 +185,7 @@ void NexData(int ex, bool iter, bool prog ,int prog_del, bool t, int t_del, bool
     NEXTION_PORT.print("EX"); // Отправка времени выполнения упрражнения
     NEXTION_PORT.print(ex);
     NEXTION_PORT.print("_Time_val.val=");
-    DataVal(Ex_time / t_del); //100
+    DataVal(Ex_time / t_del); //100 - для секунд
   }
 
     if (dir == true)
@@ -339,13 +343,12 @@ void loop()
     {
       int Selsin_data = Selsin(); //Данные сельсина
       int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
-      int state = 0;
-      DIR_value = 1;
-      digitalWrite(DIR_pin, 1);
+      int end_angle = 200; //Конечный угол упражнения
+      int del = end_angle/100;
       
-      if (FullAngle >= 200) state = 92; // Остановка упражнения и смотка тросса
-        else state = 91; // Подача тросса
-        
+      if ((FullAngle >= end_angle)&&(flag == 0)) state = 92; //Подача
+      if ((FullAngle <= 0)&&(flag == 1)) state = 92; //Смотка
+      
       switch (state)
       {
         case 91:
@@ -353,7 +356,7 @@ void loop()
                     
           if (tnz_value_1 > 5) //Проверка на усилие
           {
-            Freq_current = tnz_value_1 * 30;
+            Freq_current = tnz_value_1 * 30; // Расчёт скорости двигателя
             Motor_Period = (double)(1000000 / Freq_current);
             Timer3.start(Motor_Period);
             NEXTION_PORT.print("EX1_Text_2.val="); // Отправка данных двигателя упражнение 1
@@ -372,14 +375,30 @@ void loop()
           
         case 92:
         { 
-          Ex_numbers++;
-          NEXTION_PORT.print("EX1_Num_val.val="); // Отправка кол-ва упражнений
-          DataVal(Ex_numbers);
-          StopAndWind(1, 30, 500, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй   
+          Stop(1, 30, del, 100); // Номер упр, частота уменьшения, делитель первый, делитель второй            
+          
+          if (flag == 0) //Смотка
+          {
+            DIR_value = rope_in;
+            digitalWrite(DIR_pin, rope_in);
+            flag = 1;
+          }
+          else //Подача
+          {
+            Ex_numbers++; // Отправка кол-ва упражнений
+            NEXTION_PORT.print("EX1_Num_val.val=");
+            DataVal(Ex_numbers);
+            DIR_value = rope_out;
+            digitalWrite(DIR_pin, rope_out);
+            flag = 0;
+          }
+          
+          delay(2000);
+          state = 91;
           break;        
         }
       }
-      NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+      NexData(1, true, true, del, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100         
       break;
     }
@@ -393,8 +412,8 @@ void loop()
       int Selsin_data = Selsin(); //Данные сельсина
       int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
       double Angle[100], Strength[100]; //Значения угла и силы
-      DIR_value = 0;
-      digitalWrite(DIR_pin, 0);
+      DIR_value = rope_out;
+      digitalWrite(DIR_pin, rope_out);
       
       if (Ex_numbers == 0) state = 101;// Получения значений для упражнения
       
@@ -502,7 +521,7 @@ void loop()
               DataVal(0);
               numb++;
             }
-            NexData(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+            NexData(2, true, true, 2, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100                   
           }
           else state = 104;
@@ -518,7 +537,7 @@ void loop()
            Ex_numbers++;
            NEXTION_PORT.print("EX2_Num_val.val="); // Отправка кол-ва упражнений
            DataVal(Ex_numbers);
-           StopAndWind(2, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй
+           StopAndWind(2, 100, 10000, 2, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй
            numb = 0;
            state = 103;
            break;
@@ -589,20 +608,20 @@ void callback_MC1_Reverse(NextionEventType type, INextionTouchable *widget)
   if (type == NEX_EVENT_PUSH)
   {
 
-    if (DIR_value == 0)
+    if (DIR_value == rope_in)
     {
       Serial.println("Button Reverse pressed");
       MC1_Reverse.setBackgroundColour(NEX_COL_RED);
-      DIR_value = 1;
-      digitalWrite(DIR_pin, 1);
+      DIR_value = rope_out;
+      digitalWrite(DIR_pin, rope_out);
     }
 
     else
     {
       Serial.println("Button Reverse unpressed");
       MC1_Reverse.setBackgroundColour(NEX_COL_BLUE);
-      DIR_value = 0;
-      digitalWrite(DIR_pin, 0);
+      DIR_value = rope_in;
+      digitalWrite(DIR_pin, rope_in);
     }
   }
 }
@@ -616,14 +635,18 @@ void callback_C_Button_2(NextionEventType type, INextionTouchable *widget)
 
     if (Motor_State == 0)
     {
-      DIR_value = 0;
-      digitalWrite(DIR_pin, 0);
+      DIR_value = rope_in;
+      digitalWrite(DIR_pin, rope_in);
       Motor_State = 1;
       Timer3.start(500);
+      NEXTION_PORT.print("C_Text_2.val="); // Отправка частоты
+      DataVal(500);
     }
 
     else
     {
+      NEXTION_PORT.print("C_Text_2.val="); // Отправка частоты
+      DataVal(0);
       Motor_State = 0;
       Timer3.stop();
     }
@@ -639,14 +662,18 @@ void callback_C_Button_3(NextionEventType type, INextionTouchable *widget)
 
     if (Motor_State == 0)
     {
-      DIR_value = 1;
-      digitalWrite(DIR_pin, 1);
+      DIR_value = rope_out;
+      digitalWrite(DIR_pin, rope_out);
       Motor_State = 1;
       Timer3.start(500);
+      NEXTION_PORT.print("C_Text_2.val="); // Отправка частоты
+      DataVal(500);
     }
 
     else
     {
+      NEXTION_PORT.print("C_Text_2.val="); // Отправка частоты
+      DataVal(0);
       Motor_State = 0;
       Timer3.stop();
     }
@@ -768,6 +795,19 @@ void callback_G_Button_2(NextionEventType type, INextionTouchable *widget)
   }
 }
 
+//========================================================================= Вход в упражнение 1
+
+void callback_E_Button_1(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+    DIR_value = rope_out;
+    digitalWrite(DIR_pin, rope_out);
+    flag = 0;
+    state = 91;
+  }
+}
+
 //========================================================================= Кнопка старт упражнения 1
 
 void callback_EX1_Start(NextionEventType type, INextionTouchable *widget)
@@ -808,6 +848,10 @@ void callback_EX1_Button_Bac(NextionEventType type, INextionTouchable *widget)
     Ex_numbers = 0;
     page = 0;
     FullAngle = 0;
+    state = 0;
+    flag = 0;
+    DIR_value = rope_out;
+    digitalWrite(DIR_pin, rope_out);
   }
 }
 
@@ -917,8 +961,8 @@ void StopAndWind (int ex, int minus, int wind, int del_1, int del_2)
   }
     
   delay (2000);
-  DIR_value = 0;
-  digitalWrite(DIR_pin, 0);
+  DIR_value = rope_in;
+  digitalWrite(DIR_pin, rope_in);
   NEXTION_PORT.print("EX"); // Отправка направления
   NEXTION_PORT.print(ex);
   NEXTION_PORT.print("_Text_6.val=");
@@ -938,14 +982,29 @@ void StopAndWind (int ex, int minus, int wind, int del_1, int del_2)
   Freq_current = 0;
   Motor_Period = (double)(1000000 / Freq_current);
   Timer3.start(Motor_Period);
-  DIR_value = 1;
-  digitalWrite(DIR_pin, 1);
+  DIR_value = rope_out;
+  digitalWrite(DIR_pin, rope_out);
   NEXTION_PORT.print("EX"); // Отправка направления   
   NEXTION_PORT.print(ex);
   NEXTION_PORT.print("_Text_6.val=");
   DataVal(DIR_value);
 }
-  
+
+//========================================================================= Остановка и смотка тросса
+
+void Stop (int ex, int minus, int del_1, int del_2)
+{
+  while (Freq_current != 0) //Остановка
+  {
+    Freq_current -= minus; // Уменьшение частоты
+    if (Freq_current < 0) Freq_current = 0;
+    Motor_Period = (double)(1000000 / Freq_current);
+    Timer3.start(Motor_Period);
+    NexData(ex, true, true, del_1, true, del_2, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+      true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
+  }
+}
+
 //========================================================================= Прерывание на повышение оборотов
 
 void timer_interrupt_up()
