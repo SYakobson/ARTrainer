@@ -74,6 +74,7 @@ int Ex_time = 0; // Таймер
 int Ex_numbers = 0; // Кол-во повторений
 int Pre_time = 0; // Время на выполнение упражнения
 int numb = 0, state = 0; //Переменные для счётчиков/состояний
+int flag = 0;
 
 //=================================== Данные для двигателя
 
@@ -340,17 +341,26 @@ void loop()
       int Selsin_data = Selsin(); //Данные сельсина
       int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
       int state = 0;
-      DIR_value = 1;
-      digitalWrite(DIR_pin, 1);
-      
-      if (FullAngle >= 200) state = 92; // Остановка упражнения и смотка тросса
-        else state = 91; // Подача тросса
+
+      if (flag == 0)
+      {
+        state = 91;
+        flag = 1;
+      }
+      if ((FullAngle >= 200)&&(numb == 0))
+      {
+        state = 92;
+        numb = 1;// Остановка упражнения и смотка тросса
+      }
+       // Подача тросса
         
       switch (state)
       {
         case 91:
         {
-                    
+          DIR_value = 1;
+          digitalWrite(DIR_pin, 1);
+          
           if (tnz_value_1 > 5) //Проверка на усилие
           {
             Freq_current = tnz_value_1 * 30;
@@ -369,13 +379,43 @@ void loop()
           }
           break;
         }
-          
+
         case 92:
+        {
+           while (Freq_current != 0) //Остановка
+           {
+             Freq_current -= 40; // Уменьшение частоты
+             if (Freq_current < 0) Freq_current = 0;
+             Motor_Period = (double)(1000000 / Freq_current);
+             Timer3.start(Motor_Period);
+             NexData(1, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+              true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100
+            }
+            delay (2000);
+            state = 93;
+        }
+        
+        case 93:
         { 
-          Ex_numbers++;
-          NEXTION_PORT.print("EX1_Num_val.val="); // Отправка кол-ва упражнений
-          DataVal(Ex_numbers);
-          StopAndWind(1, 30, 500, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй   
+          DIR_value = 0;
+          digitalWrite(DIR_pin, 0);
+          
+          if (tnz_value_1 > 5) //Проверка на усилие
+          {
+            Freq_current = tnz_value_1 * 30;
+            Motor_Period = (double)(1000000 / Freq_current);
+            Timer3.start(Motor_Period);
+            NEXTION_PORT.print("EX1_Text_2.val="); // Отправка данных двигателя упражнение 1
+            DataVal(Freq_current);
+          }
+
+          if (tnz_value_1 < 5)
+          {
+            Freq_current = 0;
+            Timer3.stop();
+            NEXTION_PORT.print("EX1_Text_2.val="); // Отправка данных двигателя упражнение 1
+            DataVal(0);
+          }
           break;        
         }
       }
