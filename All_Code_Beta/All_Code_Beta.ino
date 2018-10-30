@@ -20,6 +20,7 @@
 #define DIR_pin 4 // Пин для направления двигателя
 #define rope_in 1 //Смотка тросса // для установки - 0, напрямую - 1
 #define rope_out 0 //Подача тросса //для установки - 1, напрямую - 0
+#define test_inf 0   //Вывод показаний датчиков во время работы в порт
 
 #define tnz100_pin  A0 // Пины тензо датчиков
 #define tnz500_pin  A1
@@ -64,6 +65,7 @@ NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание вре
 NextionButton C_Button_2(nex, 12, 5, "C_Button_2"); // Смотка
 NextionButton C_Button_3(nex, 12, 6, "C_Button_3"); // Намотка
 NextionButton E_Button_1(nex, 8, 1, "E_Button_1"); //Упражнение 1
+NextionButton E_Button_2(nex, 8, 3, "E_Button_2"); //Упражнение 1
 
 //==================================================== Слайдеры
 
@@ -77,6 +79,7 @@ int Ex_time = 0; // Таймер
 int Ex_numbers = 0; // Кол-во повторений
 int Pre_time = 0; // Время на выполнение упражнения
 int flag = 0, state = 0, numb = 0; //Переменные для счётчиков/состояний
+double Angle[100], Strength[100]; //Значения угла и силы
 
 //=================================== Данные для двигателя
 
@@ -146,7 +149,8 @@ void setup()
   Serial.println(C_Button_2.attachCallback(&callback_C_Button_2));
   Serial.println(C_Button_3.attachCallback(&callback_C_Button_3));
   Serial.println(E_Button_1.attachCallback(&callback_E_Button_1));
-
+  Serial.println(E_Button_2.attachCallback(&callback_E_Button_2));
+  
   //====================================================
 
   SPI.begin(4);
@@ -411,11 +415,8 @@ void loop()
       int dt_time = Pre_time / n; // Отрезок времени между измерениями
       int Selsin_data = Selsin(); //Данные сельсина
       int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
-      double Angle[100], Strength[100]; //Значения угла и силы
-      DIR_value = rope_out;
-      digitalWrite(DIR_pin, rope_out);
-      
-      if (Ex_numbers == 0) state = 101;// Получения значений для упражнения
+      int end_angle = 200; //Конечный угол упражнения
+      int del = end_angle/100;
       
       switch(state)
       {
@@ -424,19 +425,14 @@ void loop()
 
         case 101:
         {
-          NEXTION_PORT.print("EX2_Time_val.val=");
-          DataVal(Pre_time / 100);
-          Serial.print("state: ");
-          Serial.println(state);
-          
-          if ((Pre_time > Ex_time) && (FullAngle < 5000)) //Снятие данных
+          if ((Pre_time > Ex_time) && (FullAngle < end_angle)) //Снятие данных
           {
             tnz_value_1 = Tenzo(1);
             Selsin_data = Selsin();
             
             if (tnz_value_1 > 5) //Проверка на усилие
             {
-              Freq_current = tnz_value_1 * 200;
+              Freq_current = tnz_value_1 * 30;
               Motor_Period = (double)(1000000 / Freq_current);
               Timer3.start(Motor_Period);
               NEXTION_PORT.print("EX2_Text_2.val="); // Отправка данных двигателя упражнение 2
@@ -456,7 +452,7 @@ void loop()
               Strength[numb] = tnz_value_1;
               numb++;
             }
-            NexData(2, true, true, 49, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+            NexData(2, true, true, del, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
              true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100     
           }
           else 
@@ -471,20 +467,20 @@ void loop()
  
         case 102:
         {
-          Serial.print("state: ");
-          Serial.println(state);
-          StopAndWind(2, 100, 10000, 49, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй     
-          
-          for (int i = 0; i < 100; i++) // Вывод полученных массивов в порт
-          {
-            Serial.println(Angle[i]);
-          }
+          StopAndWind(2, 30, 500, del, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй     
 
-          for (int i = 0; i < 100; i++)
+          if (test_inf == 1)
           {
-            Serial.println(Strength[i]);
-          }
+            for (int i = 0; i < 100; i++) // Вывод полученных массивов в порт
+            {
+              Serial.println(Angle[i]);
+            }
 
+            for (int i = 0; i < 100; i++)
+            {
+              Serial.println(Strength[i]);
+            }
+          }
           Ex_numbers++;
           state = 103;
           numb = 0;
@@ -494,20 +490,15 @@ void loop()
 //========================================== Начало выполнения упражнения, после получения значений
        
         case 103:
-        {
-          Serial.print("state: ");
-          Serial.println(state);
-          Serial.print("numb: ");
-          Serial.println(numb);
-          
-          if (numb <= 100)
+        {          
+          if ((numb <= 100)&&((FullAngle < end_angle)))
           {
             tnz_value_1 = Tenzo(1);
             Selsin_data = Selsin(); // Angle[100], Strength[100]; 
             
             if ((tnz_value_1 >= Strength[numb])&&(FullAngle < Angle[numb+1])&&(tnz_value_1 > 5)) //Проверка на усилие
             {
-              Freq_current = tnz_value_1 * 200;
+              Freq_current = tnz_value_1 * 30;
               Motor_Period = (double)(1000000 / Freq_current);
               Timer3.start(Motor_Period);
               NEXTION_PORT.print("EX2_Text_2.val="); // Отправка данных двигателя упражнение 2
@@ -521,7 +512,7 @@ void loop()
               DataVal(0);
               numb++;
             }
-            NexData(2, true, true, 2, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
+            NexData(2, true, true, del, true, 100, true, true,  // Номер упражнения, кол-во повторений, выполнение упражнения/делитель, время выполнения/делитель, направления вращения, частота
                  true, true, true, true);  //  Сельсин, тензо 100, тензо 500, тензо 100                   
           }
           else state = 104;
@@ -532,12 +523,10 @@ void loop()
         
          case 104:
          {
-           Serial.print("state: ");
-           Serial.println(state);
            Ex_numbers++;
            NEXTION_PORT.print("EX2_Num_val.val="); // Отправка кол-ва упражнений
            DataVal(Ex_numbers);
-           StopAndWind(2, 100, 10000, 2, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй
+           StopAndWind(2, 30, 500, del, 100); // Номер упр, частота уменьшения, частота смотки, делите первый, делитель второй
            numb = 0;
            state = 103;
            break;
@@ -730,7 +719,7 @@ void callback_T500_Button_2(NextionEventType type, INextionTouchable *widget)
 
 void callback_T1000_Button_2(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_PUSH) & (page == 5))
+  if ((type == NEX_EVENT_POP) & (page == 5))
   {
     Serial.print("Button Start on page ");
     Serial.print(page);
@@ -753,7 +742,7 @@ void callback_T1000_Button_2(NextionEventType type, INextionTouchable *widget)
 
 void callback_SL_Button_2(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_PUSH) & (page == 6))
+  if ((type == NEX_EVENT_POP) & (page == 6))
   {
     Serial.print("Button Start on page ");
     Serial.print(page);
@@ -812,7 +801,7 @@ void callback_E_Button_1(NextionEventType type, INextionTouchable *widget)
 
 void callback_EX1_Start(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_POP) && (page == 9))
+  if ((type == NEX_EVENT_PUSH) && (page == 9))
   {
     Serial.print("Button Start on page ");
     Serial.print(page);
@@ -831,9 +820,7 @@ void callback_EX1_Start(NextionEventType type, INextionTouchable *widget)
     EX1_Start.setBackgroundColour(NEX_COL_RED);
     Timer1.attachInterrupt(times).start(10000); // 10мс
   }
-
 }
-
 
 //========================================================================= Выход из упражнения 1
 
@@ -855,11 +842,24 @@ void callback_EX1_Button_Bac(NextionEventType type, INextionTouchable *widget)
   }
 }
 
+//========================================================================= Вход в упражнение 2
+
+void callback_E_Button_2(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+    DIR_value = rope_out;
+    digitalWrite(DIR_pin, rope_out);
+    numb = 0;
+    state = 101;
+  }
+}
+
 //========================================================================= Кнопка Старт упражнения 2
 
 void callback_EX2_Start(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_POP) && (page == 10))
+  if ((type == NEX_EVENT_PUSH) && (page == 10))
   {
     Serial.print("Button Start on page ");
     Serial.print(page);
@@ -880,7 +880,6 @@ void callback_EX2_Start(NextionEventType type, INextionTouchable *widget)
     delay(2000);
     Timer1.attachInterrupt(times).start(10000); // 10 мс
   }
-
 }
 //========================================================================= Выход из упражнения 2
 
@@ -896,7 +895,16 @@ void callback_EX2_Button_Bac(NextionEventType type, INextionTouchable *widget)
     page = 0;
     FullAngle = 0;
     Pre_time = 0;
-  }
+    state = 0;
+    numb = 0;
+    DIR_value = rope_out;
+    digitalWrite(DIR_pin, rope_out);
+    for (int i =0; i < 100; i++)
+    {
+      Angle[i] = 0;
+      Strength[100] = 0;
+    }
+  }  
 }
 
 //========================================================================= Кнопка "Принять" на странице задания времени
@@ -1080,21 +1088,27 @@ int Selsin()
 
   dAngle = 360 * double(u16singleTurn) / 4096;  // Преобразование данных об угле
 
-  Serial.print("Angle: ");
-  Serial.print(dAngle);
+  if (test_inf == 1)
+  {
+    Serial.print("Angle: ");
+    Serial.print(dAngle);
 
-  Serial.print("  Rotations:  " );
-  Serial.println(u16multiTurn);
-
+    Serial.print("  Rotations:  " );
+    Serial.println(u16multiTurn);
+  }
+  
   if ((dAngle > Save_previous_angle) && (u16multiTurn == u16Save_previousTurn)) FullAngle = FullAngle + dAngle - Save_previous_angle; // Обработка поворотов
   if ((dAngle < Save_previous_angle) && (u16multiTurn > u16Save_previousTurn)) FullAngle = FullAngle + dAngle + (360 - Save_previous_angle);
   if ((dAngle > Save_previous_angle) && (u16multiTurn > u16Save_previousTurn)) FullAngle = FullAngle - (360 - dAngle) - Save_previous_angle;
   if ((dAngle < Save_previous_angle) && (u16multiTurn == u16Save_previousTurn)) FullAngle = FullAngle + dAngle - Save_previous_angle;
 
-  Serial.println(dAngle);
-  Serial.println(FullAngle);
-  Serial.println(Save_previous_angle);
-
+  if (test_inf == 1)
+  {
+    Serial.println(dAngle);
+    Serial.println(FullAngle);
+    Serial.println(Save_previous_angle);
+  }
+  
   Save_previous_angle = dAngle;
   u16Save_previousTurn = u16multiTurn;
 
@@ -1109,8 +1123,11 @@ int Selsin()
     NEXTION_PORT.print("cle 2, 255\xFF\xFF\xFF");
     divider = divider / 2;
   }
-
-  Serial.println(divider);
+  
+  if (test_inf == 1)
+  {
+    Serial.println(divider);
+  }
   return (FullAngle / divider);
 }
 
@@ -1123,22 +1140,31 @@ int Tenzo(int tnz_number)
   if (tnz_number == 1)
   {
     tnz_data = analogRead(tnz100_pin);
-    Serial.print("Tnz_100:   ");
-    Serial.println(tnz_data);
+    if (test_inf == 1)
+    {
+      Serial.print("Tnz_100:   ");
+      Serial.println(tnz_data);
+    }
     return (tnz_data);
   }
   if (tnz_number == 2)
   {
     tnz_data = analogRead(tnz500_pin);
-    Serial.print("Tnz_500:   ");
-    Serial.println(tnz_data);
+    if (test_inf == 1)
+    {
+      Serial.print("Tnz_500:   ");
+      Serial.println(tnz_data);
+    }
     return (tnz_data);
   }
   if (tnz_number == 3)
   {
     tnz_data = analogRead(tnz1000_pin);
-    Serial.print("Tnz_1000:   ");
-    Serial.println(tnz_data);
+    if (test_inf == 1)
+    {
+      Serial.print("Tnz_1000:   ");
+      Serial.println(tnz_data);
+    }
     return (tnz_data);
   }
 }
