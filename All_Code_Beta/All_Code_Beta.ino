@@ -18,8 +18,8 @@
 #define NEXTION_PORT Serial1 // Порт передачи Nextion
 #define STP_pin 2 // Пин для передачи шага двигателя
 #define DIR_pin 4 // Пин для направления двигателя
-#define rope_in 1 //Смотка тросса // для установки - 0, напрямую - 1
-#define rope_out 0 //Подача тросса //для установки - 1, напрямую - 0
+#define rope_in 0 //Смотка тросса // для установки - 0, напрямую - 1
+#define rope_out 1 //Подача тросса //для установки - 1, напрямую - 0
 #define test_inf 0   //Вывод показаний датчиков во время работы в порт
 
 #define tnz100_pin  A0 // Пины тензо датчиков
@@ -58,14 +58,16 @@ NextionButton T1000_Button_2(nex, 5, 6, " T1000_Button_2"); //Старт пок�
 NextionButton SL_Button_2(nex, 6, 6, "SL_Button_2");  // Старт показаний сельсин датчика
 NextionButton G_Button_2(nex, 7, 9, "G_Button_2"); // Старт показаний Гироскопа
 NextionButton EX1_Start(nex, 9, 2, "EX1_Start"); //Старт 1 упражнения
+NextionButton EX1_Stop(nex, 9, 24, "EX1_Stop"); //Стоп 1 упражнения
 NextionButton EX1_Button_Bac(nex, 9, 1, "EX_Button_Bac"); //Выход из упражнения 1
 NextionButton EX2_Start(nex, 10, 2, "EX2_Start"); //Старт 2 упражнения
+NextionButton EX2_Stop(nex, 10, 24, "EX2_Stop"); //Стоп 2 упражнения
 NextionButton EX2_Button_Bac(nex, 10, 1, "EX2_Button_Bac"); //Выход из упражнения 2
 NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
 NextionButton C_Button_2(nex, 12, 5, "C_Button_2"); // Смотка
 NextionButton C_Button_3(nex, 12, 6, "C_Button_3"); // Намотка
 NextionButton E_Button_1(nex, 8, 1, "E_Button_1"); //Упражнение 1
-NextionButton E_Button_2(nex, 8, 3, "E_Button_2"); //Упражнение 1
+NextionButton E_Button_2(nex, 8, 3, "E_Button_2"); //Упражнение 2
 
 //==================================================== Слайдеры
 
@@ -142,8 +144,10 @@ void setup()
   Serial.println(SL_Button_2.attachCallback(&callback_SL_Button_2));
   Serial.println(G_Button_2.attachCallback(&callback_G_Button_2));
   Serial.println(EX1_Start.attachCallback(&callback_EX1_Start));
+  Serial.println(EX1_Stop.attachCallback(&callback_EX1_Stop));
   Serial.println(EX1_Button_Bac.attachCallback(&callback_EX1_Button_Bac));
   Serial.println(EX2_Start.attachCallback(&callback_EX2_Start));
+  Serial.println(EX2_Stop.attachCallback(&callback_EX2_Stop));
   Serial.println(EX2_Button_Bac.attachCallback(&callback_EX2_Button_Bac));
   Serial.println(TP_Button_Ok.attachCallback(&callback_TP_Button_Ok));
   Serial.println(C_Button_2.attachCallback(&callback_C_Button_2));
@@ -801,24 +805,29 @@ void callback_E_Button_1(NextionEventType type, INextionTouchable *widget)
 
 void callback_EX1_Start(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_PUSH) && (page == 9))
-  {
-    Serial.print("Button Start on page ");
-    Serial.print(page);
-    Serial.println(" unpressed");
-    EX1_Start.setBackgroundColour(NEX_COL_GREEN);
-    Timer3.stop();
-    Timer1.stop();
-    page = 0;
-  }
-  else
+  if (type == NEX_EVENT_PUSH)
   {
     page = 9;
     Serial.print("Button Start on page ");
     Serial.print(page);
     Serial.println(" pressed");
-    EX1_Start.setBackgroundColour(NEX_COL_RED);
     Timer1.attachInterrupt(times).start(10000); // 10мс
+  }
+
+}
+
+//========================================================================= Кнопка стоп упражнения 1
+
+void callback_EX1_Stop(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+    Serial.print("Button Start on page ");
+    Serial.print(page);
+    Serial.println(" pressed");
+    Timer3.stop();
+    Timer1.stop();
+    page = 0;
   }
 }
 
@@ -859,26 +868,30 @@ void callback_E_Button_2(NextionEventType type, INextionTouchable *widget)
 
 void callback_EX2_Start(NextionEventType type, INextionTouchable *widget)
 {
-  if ((type == NEX_EVENT_PUSH) && (page == 10))
-  {
-    Serial.print("Button Start on page ");
-    Serial.print(page);
-    Serial.println(" unpressed");
-    EX2_Start.setBackgroundColour(NEX_COL_GREEN);
-    Timer3.stop();
-    Timer1.stop();
-    page = 0;
-  }
-
-  else
+  if (type == NEX_EVENT_PUSH)
   {
     page = 10;
     Serial.print("Button Start on page ");
     Serial.print(page);
     Serial.println(" pressed");
-    EX2_Start.setBackgroundColour(NEX_COL_RED);
-    delay(2000);
     Timer1.attachInterrupt(times).start(10000); // 10 мс
+    
+  }
+}
+
+
+//========================================================================= Кнопка стоп упражнения 2
+
+void callback_EX2_Stop(NextionEventType type, INextionTouchable *widget)
+{
+  if (type == NEX_EVENT_PUSH)
+  {
+    Serial.print("Button Stop on page ");
+    Serial.print(page);
+    Serial.println(" pressed");
+    Timer3.stop();
+    Timer1.stop();
+    page = 0;
   }
 }
 //========================================================================= Выход из упражнения 2
