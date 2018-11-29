@@ -47,7 +47,7 @@ NextionPage pgEX1(nex, 9, 0, "Exercise 1"); //Упражнение 1
 NextionPage pgEX2(nex, 10, 0, "Exercise 2"); //Упражнение 2
 NextionPage pgTP (nex, 11, 0, "Time Page"); //Задание времени на упражнение 2
 NextionPage pgC (nex, 12, 0, "Coiling"); //Смотка, намотка
-
+NextionPage pgEX3(nex, 13, 0, "Exercise 3"); //Упражнение 3
 //==================================================== Кнопки
 
 NextionButton MC1_Start(nex, 2, 7, "MC1_Start"); // Мотор 1, Старт
@@ -57,17 +57,22 @@ NextionButton T500_Button_2(nex, 4, 6, " T500_Button_2"); //Старт пока�
 NextionButton T1000_Button_2(nex, 5, 6, " T1000_Button_2"); //Старт показаний Тензо 1000
 NextionButton SL_Button_2(nex, 6, 6, "SL_Button_2");  // Старт показаний сельсин датчика
 NextionButton G_Button_2(nex, 7, 9, "G_Button_2"); // Старт показаний Гироскопа
-NextionButton EX1_Start(nex, 9, 2, "EX1_Start"); //Старт 1 упражнения
-NextionButton EX1_Stop(nex, 9, 24, "EX1_Stop"); //Стоп 1 упражнения
-NextionButton EX1_Button_Bac(nex, 9, 1, "EX_Button_Bac"); //Выход из упражнения 1
-NextionButton EX2_Start(nex, 10, 2, "EX2_Start"); //Старт 2 упражнения
-NextionButton EX2_Stop(nex, 10, 24, "EX2_Stop"); //Стоп 2 упражнения
-NextionButton EX2_Button_Bac(nex, 10, 1, "EX2_Button_Bac"); //Выход из упражнения 2
-NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
 NextionButton C_Button_2(nex, 12, 5, "C_Button_2"); // Смотка
 NextionButton C_Button_3(nex, 12, 6, "C_Button_3"); // Намотка
 NextionButton E_Button_1(nex, 8, 1, "E_Button_1"); //Упражнение 1
 NextionButton E_Button_2(nex, 8, 3, "E_Button_2"); //Упражнение 2
+NextionButton E_Button_3(nex, 8, 4, "E_Button_3"); //Упражнение 3
+NextionButton EX1_Start(nex, 9, 2, "EX1_Start"); //Старт 1 упражнения
+NextionButton EX2_Start(nex, 10, 2, "EX2_Start"); //Старт 2 упражнения
+NextionButton EX3_Start(nex, 13, 2, "EX3_Start"); //Старт 3 упражнения
+NextionButton EX1_Stop(nex, 9, 24, "EX1_Stop"); //Стоп 1 упражнения
+NextionButton EX2_Stop(nex, 10, 24, "EX2_Stop"); //Стоп 2 упражнения
+NextionButton EX3_Stop(nex, 13, 24, "EX3_Stop"); //Стоп 3 упражнения
+NextionButton EX1_Button_Bac(nex, 9, 1, "EX_Button_Bac"); //Выход из упражнения 1
+NextionButton EX2_Button_Bac(nex, 10, 1, "EX2_Button_Bac"); //Выход из упражнения 2
+NextionButton EX3_Button_Bac(nex, 13, 1, "EX3_Button_Bac"); //Выход из упражнения 3
+NextionButton TP_Button_Ok(nex, 11, 3, "TP_Button_Ok"); // Задание времени для упражнения 2
+
 
 //==================================================== Слайдеры
 
@@ -150,6 +155,9 @@ void setup()
   Serial.println(EX2_Stop.attachCallback(&callback_EX2_Stop));
   Serial.println(EX2_Button_Bac.attachCallback(&callback_EX2_Button_Bac));
   Serial.println(TP_Button_Ok.attachCallback(&callback_TP_Button_Ok));
+  Serial.println(EX3_Start.attachCallback(&callback_EX3_Start));
+  Serial.println(EX3_Stop.attachCallback(&callback_EX3_Stop));
+  Serial.println(EX3_Button_Bac.attachCallback(&callback_EX3_Button_Bac));
   Serial.println(C_Button_2.attachCallback(&callback_C_Button_2));
   Serial.println(C_Button_3.attachCallback(&callback_C_Button_3));
   Serial.println(E_Button_1.attachCallback(&callback_E_Button_1));
@@ -538,6 +546,15 @@ void loop()
 //========================================== Конец выполнения упражнения
       }
     }
+
+//========================================================================= Упражнение 2
+
+    case 13:
+    {
+      break;
+    }
+    
+//========================================================================= Конец
   }
 }
 
