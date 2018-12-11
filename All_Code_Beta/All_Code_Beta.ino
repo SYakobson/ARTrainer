@@ -20,7 +20,8 @@
 #define DIR_pin 4 // Пин для направления двигателя
 #define rope_in 0 //Смотка тросса // для установки - 0, напрямую - 1
 #define rope_out 1 //Подача тросса //для установки - 1, напрямую - 0
-#define test_inf 0   //Вывод показаний датчиков во время работы в порт
+#define test_inf 0 //Вывод показаний датчиков во время работы в порт
+#define points  12 //Количество точек измерения
 
 #define tnz100_pin  A0 // Пины тензо датчиков
 #define tnz500_pin  A1
@@ -45,8 +46,8 @@ NextionPage pgSelsin(nex, 6, 0, "Selsin"); //Сельсин
 NextionPage pgGyro(nex, 7, 0, "Gyro"); // Гироскоп
 NextionPage pgEX1(nex, 9, 0, "Exercise 1"); //Упражнение 1
 NextionPage pgEX2(nex, 10, 0, "Exercise 2"); //Упражнение 2
-NextionPage pgTP (nex, 11, 0, "Time Page"); //Задание времени на упражнение 2
-NextionPage pgC (nex, 12, 0, "Coiling"); //Смотка, намотка
+NextionPage pgTP(nex, 11, 0, "Time Page"); //Задание времени на упражнение 2
+NextionPage pgC(nex, 12, 0, "Coiling"); //Смотка, намотка
 NextionPage pgEX3(nex, 13, 0, "Exercise 3"); //Упражнение 3
 //==================================================== Кнопки
 
@@ -551,6 +552,22 @@ void loop()
 
     case 13:
     {
+      int positions[points] = {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.99, 1}, // Положение
+          phase[points] = {0, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 0.3, 1},  // Время промежутка
+          phase_koef[points] = {1, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 0.9667, 1}, // Коэффициент фазы
+          tired_koef[points] = {1, 0.988, 0.975, 0.963, 0.950, 0.938, 0.925, 0.913, 0.900, 0.888, 0.875, 0.833}, // Коэффициент усталости  
+          muscle_potenc[points]; // Потецниал мыщцы
+          muscle_potenc[0] = 100;
+          for(int i = 1; i < points; i++)
+          {
+            muscle_potenc[i] =  muscle_potenc[i-1]*tired_koef[i];
+          }
+      
+      int Selsin_data = Selsin(); //Данные сельсина
+      int tnz_value_1 = Tenzo(1), tnz_value_2 = Tenzo(2), tnz_value_3 = Tenzo(3); // Данные тензо 100
+      int end_angle = 200; //Конечный угол упражнения
+      int del = end_angle/100;
+      
       break;
     }
     
@@ -937,6 +954,26 @@ void callback_EX2_Button_Bac(NextionEventType type, INextionTouchable *widget)
   }  
 }
 
+//========================================================================= Кнопка Старт упражнения 3
+
+void callback_EX3_Start(NextionEventType type, INextionTouchable *widget)
+{
+
+}
+
+
+//========================================================================= Кнопка стоп упражнения 3
+
+void callback_EX3_Stop(NextionEventType type, INextionTouchable *widget)
+{
+
+}
+//========================================================================= Выход из упражнения 3
+
+void callback_EX3_Button_Bac(NextionEventType type, INextionTouchable *widget)
+{
+
+}
 //========================================================================= Кнопка "Принять" на странице задания времени
 
 void callback_TP_Button_Ok(NextionEventType type, INextionTouchable *widget)
