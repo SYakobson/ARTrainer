@@ -13,7 +13,7 @@
 #include <NextionPage.h>
 #include <NextionSlider.h>
 #include <NextionButton.h>
-//#include <NextionWaveform.h>
+#include <TrainData.h>
 
 #define NEXTION_PORT Serial1 // Порт передачи Nextion
 #define STP_pin 2 // Пин для передачи шага двигателя
@@ -169,7 +169,12 @@ void setup()
   SPI.begin(4);
   SPI.setClockDivider(4, SPI_CLOCK_DIV128); //Установка Clock
   Serial.println("  *** Setup complete ***  "); // Конец всех установок
-
+  Serial.println(arc_in);
+  for (int i = 0; i < 4; i++) Serial.print(arc_in_mass[i]);
+  Serial.println();
+  Serial.println(arc_fl);
+  for (int i = 0; i < 6; i++) Serial.print(arc_txt[i]);
+  Serial.println();
 }
 
 //========================================================================= Конец Setup
